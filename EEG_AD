@@ -9,7 +9,7 @@ from scipy.signal import welch
 
 
 #Dataset
-DATASET_ROOT = Path("COGS118C_Final_Project")
+DATASET_ROOT = Path("Data/COGS118C_Final_Project")
 print("Dataset root:", DATASET_ROOT)
 #loading participants file
 participants = pd.read_csv(
@@ -19,3 +19,27 @@ participants = pd.read_csv(
 participants.shape
 participants.head()
 print(participants.columns)
+part_count = participants["Group"].value_counts()
+
+#separating the subjects
+ad_subjects = participants[participants['Group'] == 'A']
+hc_subjects = participants[participants['Group'] == 'C']
+
+print('Alzheimer Subjects:',len(ad_subjects))
+print('Healthy Subjects:', len(hc_subjects))
+
+#creating a sample(20 healthy vs 20 AD)
+ad_sample = ad_subjects.sample(20, random_state=42)
+hc_sample = hc_subjects.sample(20,random_state=42)
+
+selected_subjects = pd.concat([ad_sample, hc_sample])
+
+#taking subject IDs
+subject_ids = selected_subjects['participant_id'].tolist()
+print(subject_ids[:10])
+
+#looping through each subject
+for subject in subject_ids:
+    file_path = DATASET_ROOT / subject / "eeg" / f"{subject}_task-eyesclosed_eeg.set"
+    raw = mne.io.read_raw_set(file_path, preload=True)
+    print("Loaded:", subject)
