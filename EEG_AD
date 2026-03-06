@@ -1,0 +1,21 @@
+
+#Imports
+import pandas as pd
+import mne
+import numpy as np
+from pathlib import Path
+import matplotlib.pyplot as plt
+from scipy.signal import welch
+
+
+#Dataset
+DATASET_ROOT = Path("COGS118C_Final_Project")
+print("Dataset root:", DATASET_ROOT)
+#loading participants file
+participants = pd.read_csv(
+    DATASET_ROOT / 'participants.tsv',
+    sep='\t'
+)
+participants.shape
+participants.head()
+print(participants.columns)
