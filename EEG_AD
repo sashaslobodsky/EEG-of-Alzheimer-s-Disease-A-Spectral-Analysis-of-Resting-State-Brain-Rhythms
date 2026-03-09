@@ -1,45 +1,104 @@
-
-#Imports
+# Imports
+import os
+from pathlib import Path
 import pandas as pd
 import mne
-import numpy as np
-from pathlib import Path
-import matplotlib.pyplot as plt
-from scipy.signal import welch
 
-
-#Dataset
-DATASET_ROOT = Path("Data/COGS118C_Final_Project")
+# Dataset root
+DATASET_ROOT = Path(r"C:\Users\sasha\Downloads\COGS118C_HW1\COGS118C_Final_Project")
 print("Dataset root:", DATASET_ROOT)
-#loading participants file
-participants = pd.read_csv(
-    DATASET_ROOT / 'participants.tsv',
-    sep='\t'
-)
-participants.shape
-participants.head()
+
+# Load participants
+participants = pd.read_csv(DATASET_ROOT / "participants.tsv", sep="\t")
+
 print(participants.columns)
-part_count = participants["Group"].value_counts()
+print(participants["Group"].value_counts())
 
-#separating the subjects
-ad_subjects = participants[participants['Group'] == 'A']
-hc_subjects = participants[participants['Group'] == 'C']
+# Separate groups
+ad_subjects = participants[participants["Group"] == "A"]
+hc_subjects = participants[participants["Group"] == "C"]
 
-print('Alzheimer Subjects:',len(ad_subjects))
-print('Healthy Subjects:', len(hc_subjects))
+print("Alzheimer Subjects:", len(ad_subjects))
+print("Healthy Subjects:", len(hc_subjects))
 
-#creating a sample(20 healthy vs 20 AD)
+# Sample 20 from each
 ad_sample = ad_subjects.sample(20, random_state=42)
-hc_sample = hc_subjects.sample(20,random_state=42)
+hc_sample = hc_subjects.sample(20, random_state=42)
 
 selected_subjects = pd.concat([ad_sample, hc_sample])
+subject_ids = selected_subjects["participant_id"].tolist()
 
-#taking subject IDs
-subject_ids = selected_subjects['participant_id'].tolist()
 print(subject_ids[:10])
 
-#looping through each subject
+results = []
+
+# Making sure everything is in the folders
 for subject in subject_ids:
-    file_path = DATASET_ROOT / subject / "eeg" / f"{subject}_task-eyesclosed_eeg.set"
-    raw = mne.io.read_raw_set(file_path, preload=True)
-    print("Loaded:", subject)
+    try:
+        eeg_folder = DATASET_ROOT / subject / "eeg"
+        print("Checking folder:", eeg_folder)
+
+        if not eeg_folder.exists():
+            print("Folder not found:", eeg_folder)
+            continue
+
+        eeg_files = [f for f in os.listdir(eeg_folder) if f.endswith(".set")]
+        print("Found files:", eeg_files)
+
+        if len(eeg_files) == 0:
+            print("No .set file found for", subject)
+            continue
+
+        file_path = eeg_folder / eeg_files[0]
+
+        raw = mne.io.read_raw_eeglab(file_path, preload=True)
+        print("Loaded:", subject)
+        print(raw)
+
+        # Preprocess
+        raw.filter(0.5, 40.0)
+        raw.notch_filter(50.0)
+        raw.set_eeg_reference("average")
+
+        # Compute PSD with Welch
+        data = raw.get_data()
+        sfreq = raw.info["sfreq"]
+
+        psd, freqs = mne.time_frequency.psd_array_welch(
+            data,
+            sfreq=sfreq,
+            fmin=0.5,
+            fmax=40.0,
+            n_fft=1024
+        )
+
+        # Average PSD across channels and frequencies in each band
+        delta = psd[:, (freqs >= 1) & (freqs < 4)].mean()
+        theta = psd[:, (freqs >= 4) & (freqs < 8)].mean()
+        alpha = psd[:, (freqs >= 8) & (freqs < 13)].mean()
+        beta = psd[:, (freqs >= 13) & (freqs < 30)].mean()
+
+        group = participants.loc[
+            participants["participant_id"] == subject, "Group"
+        ].values[0]
+
+        results.append({
+            "participant_id": subject,
+            "group": group,
+            "delta": delta,
+            "theta": theta,
+            "alpha": alpha,
+            "beta": beta
+        })
+
+        print("Processed:", subject)
+
+    except Exception as e:
+        print(f"Skipping {subject} due to error: {e}")
+        continue
+
+# Convert to dataframe
+results_df = pd.DataFrame(results)
+
+print(results_df.head())
+print(results_df.groupby("group")[["delta", "theta", "alpha", "beta"]].mean())
