@@ -3,6 +3,8 @@ import os
 from pathlib import Path
 import pandas as pd
 import mne
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 # Dataset root
 DATASET_ROOT = Path(r"C:\Users\sasha\Downloads\COGS118C_HW1\COGS118C_Final_Project")
@@ -22,7 +24,7 @@ print("Alzheimer Subjects:", len(ad_subjects))
 print("Healthy Subjects:", len(hc_subjects))
 
 # Sample 20 from each
-ad_sample = ad_subjects.sample(20, random_state=42)
+ad_sample = ad_subjects.sample(20, random_state=42)#random_state included so that it produces same random result so that results can become reproducible
 hc_sample = hc_subjects.sample(20, random_state=42)
 
 selected_subjects = pd.concat([ad_sample, hc_sample])
@@ -92,7 +94,7 @@ for subject in subject_ids:
         })
 
         print("Processed:", subject)
-
+    #double checking if something is missing or failed to run
     except Exception as e:
         print(f"Skipping {subject} due to error: {e}")
         continue
@@ -102,3 +104,28 @@ results_df = pd.DataFrame(results)
 
 print(results_df.head())
 print(results_df.groupby("group")[["delta", "theta", "alpha", "beta"]].mean())
+
+#Creating Vizualization 1 - Bar Plot
+
+bands = ['delta','theta','alpha','beta']
+#using the melt function so that we can just easily plot mulitple frequency bands in one graph without doing multiple so that its cleaner 
+#the melt function will reshape the df from a wide format to long so seaborn can easily compare the categories
+results_melt = results_df.melt(
+    id_vars = 'group',
+    value_vars = bands,
+    var_name = 'band',
+    value_name = 'power',
+)
+
+sns.barplot(
+    data = results_melt,
+    x='band',
+    y = 'power',
+    hue='group',
+    ci='sd'
+)
+
+plt.title('Average EEG Band Power AD vs Healthy')
+plt.xlabel('Frequency Band')
+plt.ylabel('Power')
+plt.show()
