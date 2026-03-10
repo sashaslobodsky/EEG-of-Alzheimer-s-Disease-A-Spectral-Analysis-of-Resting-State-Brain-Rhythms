@@ -133,23 +133,33 @@ plt.ylabel('Power')
 plt.show()
 
 #Creating Visualization #2 - A Power Spectrum Overlay
-results = []
-all_psd = []
-for subject in subject_ids:
-    all_psd.append(psd.mean(axis=0))
 
-#plotting averages across the psds
+# plotting averages across the PSDs
+all_psd=[]
 psd_array = np.array(all_psd)
-ad_psd = psd_array[results_df['group']=='A'].mean(axis=0)
-hc_psd = psd_array[results_df['group']=='C'].mean(axis=0)
+ad_mask = results_df["group"].to_numpy() == "A"
+hc_mask = results_df["group"].to_numpy() == "C"
+ad_group = psd_array[ad_mask]
+hc_group = psd_array[hc_mask]
+ad_mean = ad_group.mean(axis=0)
+hc_mean = hc_group.mean(axis=0)
+ad_se = ad_group.std(axis=0) / np.sqrt(ad_group.shape[0])
+hc_se = hc_group.std(axis=0) / np.sqrt(hc_group.shape[0])
+ad_lower = np.maximum(ad_mean - ad_se, 1e-20)
+hc_lower = np.maximum(hc_mean - hc_se, 1e-20)
 
-#plotting the frequencys for AD 
-plt.plot(freqs,ad_psd,label='Alzheimers')
-#plotting the frequencys for HC
-plt.plot(freqs,hc_psd,label='Healthy')
+plt.figure(figsize=(8, 5))
 
-plt.xlabel('Frequency in Hz')
-plt.ylabel('Power')
-plt.title('Average Power Spectrum')
+plt.plot(freqs, ad_mean, label="Alzheimer's", linewidth=3, alpha=0.8)
+plt.fill_between(freqs, ad_lower, ad_mean + ad_se, alpha=0.2)
+
+plt.plot(freqs, hc_mean, label="Healthy", linewidth=2, alpha=0.8)
+plt.fill_between(freqs, hc_lower, hc_mean + hc_se, alpha=0.2)
+
+plt.yscale("log")
+plt.xlabel("Frequency (Hz)")
+plt.ylabel("Power")
+plt.title("Log Power Spectrum: AD vs Healthy")
 plt.legend()
+plt.tight_layout()
 plt.show()
