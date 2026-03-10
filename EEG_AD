@@ -5,6 +5,7 @@ import pandas as pd
 import mne
 import seaborn as sns
 import matplotlib.pyplot as plt
+import numpy as np
 
 # Dataset root
 DATASET_ROOT = Path(r"C:\Users\sasha\Downloads\COGS118C_HW1\COGS118C_Final_Project")
@@ -122,10 +123,33 @@ sns.barplot(
     x='band',
     y = 'power',
     hue='group',
-    ci='sd'
+    palette = {'A': '#384860','C':'#97A6C4'},
+    errorbar='se' #Chose error bar of standard error instead of standard deviation because se looked cleaner and also because I wanted to measure the uncertainty in the mean estimate rather than distribution variability
 )
 
 plt.title('Average EEG Band Power AD vs Healthy')
 plt.xlabel('Frequency Band')
 plt.ylabel('Power')
+plt.show()
+
+#Creating Visualization #2 - A Power Spectrum Overlay
+results = []
+all_psd = []
+for subject in subject_ids:
+    all_psd.append(psd.mean(axis=0))
+
+#plotting averages across the psds
+psd_array = np.array(all_psd)
+ad_psd = psd_array[results_df['group']=='A'].mean(axis=0)
+hc_psd = psd_array[results_df['group']=='C'].mean(axis=0)
+
+#plotting the frequencys for AD 
+plt.plot(freqs,ad_psd,label='Alzheimers')
+#plotting the frequencys for HC
+plt.plot(freqs,hc_psd,label='Healthy')
+
+plt.xlabel('Frequency in Hz')
+plt.ylabel('Power')
+plt.title('Average Power Spectrum')
+plt.legend()
 plt.show()
