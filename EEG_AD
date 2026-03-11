@@ -206,12 +206,16 @@ hc_coh_mean = np.mean(hc_coherence, axis=0)
 diff_coh = ad_coh_mean - hc_coh_mean
 
 #Plot heatmap
+mask = np.triu(np.ones_like(diff_coh, dtype=bool)) #removes the duplicate half of the matrix since it is symmetric
 sns.heatmap(
     diff_coh,
+    mask = mask,
     xticklabels=raw.ch_names,
     yticklabels=raw.ch_names,
     cmap="coolwarm",
-    center=0
+    center=0,
+    vmin=-0.2,#vmin and max creates a fixed limit to the color scale so that it doesn't exaggerate small differences -- this was recommended
+    vmax=0.2
 )
 plt.title("Alpha-Band Coherence Difference (AD - Healthy)")
 plt.xlabel("Channel")
