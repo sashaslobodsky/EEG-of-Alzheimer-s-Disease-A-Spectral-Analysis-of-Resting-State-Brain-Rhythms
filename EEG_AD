@@ -9,7 +9,7 @@ import numpy as np
 from scipy.signal import coherence
 
 # Dataset root
-DATASET_ROOT = Path(r"C:\Users\sasha\Downloads\COGS118C_HW1\COGS118C_Final_Project")
+DATASET_ROOT = DATASET_ROOT = Path("Data/COGS118C_FINALPRJ")
 print("Dataset root:", DATASET_ROOT)
 
 # Load participants
@@ -64,7 +64,7 @@ def compute_alpha_coherence_matrix(raw):
 for subject in subject_ids:
     try:
         #Making sure folders are downloaded properly and loaded
-        eeg_folder = DATASET_ROOT / subject / "eeg"
+        eeg_folder = DATASET_ROOT / "derivatives" / subject / "eeg"
         print("Checking folder:", eeg_folder)
 
         if not eeg_folder.exists():
@@ -138,6 +138,8 @@ for subject in subject_ids:
 results_df = pd.DataFrame(results)
 psd_array = np.array(all_psd)
 print(results_df.head())
+if results_df.empty:
+    raise ValueError("No subjects were processed successfully. Check EEG folder path and dataset structure.")
 print(results_df.groupby("group")[["delta", "theta", "alpha", "beta"]].mean())
 print('AD coherence matrices:', len(ad_coherence))
 print('HC coherence matrices:', len(hc_coherence))
