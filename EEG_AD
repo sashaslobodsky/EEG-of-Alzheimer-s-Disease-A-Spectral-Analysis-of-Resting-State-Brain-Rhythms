@@ -6,6 +6,7 @@ import mne
 import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.signal import coherence
 
 # Dataset root
 DATASET_ROOT = Path(r"C:\Users\sasha\Downloads\COGS118C_HW1\COGS118C_Final_Project")
@@ -34,10 +35,35 @@ subject_ids = selected_subjects["participant_id"].tolist()
 print(subject_ids[:10])
 
 results = []
-
-# Making sure everything is in the folders
+all_psd = []
+ad_coherence = []
+hc_coherence = []
+#Creating function to calculate alpha band coherence matrix
+def compute_alpha_coherence_matrix(raw):
+    data = raw.get_data() #Extract EEG data
+    sfreq = raw.info['sfreq'] #Sampling rate
+    n_channel = data.shape[0]
+    #Creating an empty coherence matrix
+    coh_matrix = np.zeros((n_channel, n_channel))
+    #This for loop will go through the channels examing i
+    for i in range(n_channel):
+        coh_matrix[i,i] = 1.0
+        #This for loop will now compare the channels
+        #Channel i vs channel j
+        for j in range (i+1, n_channel): #doing i+1 since the matrix is symmetric so you only need to compute half of it 
+            #computing the magnitude squared coherence btwn 2 signals
+            #f is frequency values, and Cxy is the coherence at each of those frequency
+            f, Cxy = coherence(data[i], data[j], fs=sfreq,nperseg=1024)
+            alpha_mask = (f>=8) & (f<13)
+            alpha_coh = Cxy[alpha_mask].mean()
+            #filling the matrix
+            coh_matrix[i,j]= alpha_coh
+            coh_matrix[j,i]= alpha_coh 
+    return coh_matrix
+#Looping through each participant ID
 for subject in subject_ids:
     try:
+        #Making sure folders are downloaded properly and loaded
         eeg_folder = DATASET_ROOT / subject / "eeg"
         print("Checking folder:", eeg_folder)
 
@@ -56,7 +82,7 @@ for subject in subject_ids:
 
         raw = mne.io.read_raw_eeglab(file_path, preload=True)
         print("Loaded:", subject)
-        print(raw)
+    
 
         # Preprocess
         raw.filter(0.5, 40.0)
@@ -85,6 +111,7 @@ for subject in subject_ids:
             participants["participant_id"] == subject, "Group"
         ].values[0]
 
+        all_psd.append(psd.mean(axis=0))
         results.append({
             "participant_id": subject,
             "group": group,
@@ -93,18 +120,27 @@ for subject in subject_ids:
             "alpha": alpha,
             "beta": beta
         })
+        #Calling function from before and defing it as coh_matrix - Computes coherence between each electrode pair
+        coh_matrix = compute_alpha_coherence_matrix(raw)
+        #Now just stroring it by group AD and Healthy
+        if group == "A":
+            ad_coherence.append(coh_matrix)
+        elif group == "C":
+            hc_coherence.append(coh_matrix)
 
         print("Processed:", subject)
-    #double checking if something is missing or failed to run
+    #handles if something is missing or failed to run
     except Exception as e:
         print(f"Skipping {subject} due to error: {e}")
         continue
 
 # Convert to dataframe
 results_df = pd.DataFrame(results)
-
+psd_array = np.array(all_psd)
 print(results_df.head())
 print(results_df.groupby("group")[["delta", "theta", "alpha", "beta"]].mean())
+print('AD coherence matrices:', len(ad_coherence))
+print('HC coherence matrices:', len(hc_coherence))
 
 #Creating Vizualization 1 - Bar Plot
 
@@ -135,8 +171,6 @@ plt.show()
 #Creating Visualization #2 - A Power Spectrum Overlay
 
 # plotting averages across the PSDs
-all_psd=[]
-psd_array = np.array(all_psd)
 ad_mask = results_df["group"].to_numpy() == "A"
 hc_mask = results_df["group"].to_numpy() == "C"
 ad_group = psd_array[ad_mask]
@@ -161,5 +195,26 @@ plt.xlabel("Frequency (Hz)")
 plt.ylabel("Power")
 plt.title("Log Power Spectrum: AD vs Healthy")
 plt.legend()
+plt.tight_layout()
+plt.show()
+
+
+#Visualization #3 - Magnitude-Squared Coherence Matrix Graph
+#Magnitude-Squared coherence will measure how strongly two EEG channels are related at a frequecny and if its value is near 0 then it will have weak relationship, if value near 1 it has strong relationship 
+ad_coh_mean = np.mean(ad_coherence, axis=0)
+hc_coh_mean = np.mean(hc_coherence, axis=0)
+diff_coh = ad_coh_mean - hc_coh_mean
+
+#Plot heatmap
+sns.heatmap(
+    diff_coh,
+    xticklabels=raw.ch_names,
+    yticklabels=raw.ch_names,
+    cmap="coolwarm",
+    center=0
+)
+plt.title("Alpha-Band Coherence Difference (AD - Healthy)")
+plt.xlabel("Channel")
+plt.ylabel("Channel")
 plt.tight_layout()
 plt.show()
