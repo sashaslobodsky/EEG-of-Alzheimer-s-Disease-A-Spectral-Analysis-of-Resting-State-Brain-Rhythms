@@ -14,7 +14,6 @@ Using EEG recordings, we analyze:
 
 The goal is to understand how **neural oscillations and network synchronization change in Alzheimer’s disease**.
 
-This project was developed as part of **COGS 118C – Signal Processing for Cognitive Science**.
 
 ---
 
@@ -36,15 +35,20 @@ EEG-of-Alzheimer-s-Disease-A-Spectral-Analysis-of-Resting-State-Brain-Rhythms/
 
 ├── EEG_AD.py
 │ Main analysis script
+
 │
 ├── README.md
 │ Project documentation
+
 │
 ├── .gitignore
 │ Files excluded from version control
+
 │
 └── Data/
+
 └── COGS118C_FINALPRJ/
+
 EEG dataset (downloaded separately)
 
 
@@ -85,15 +89,25 @@ https://openneuro.org/datasets/ds004504
 
 Final directory structure should look like:
 Data/
+
 └── COGS118C_FINALPRJ/
+
 ├── participants.tsv
+
 ├── dataset_description.json
+
 └── derivatives/
+
 ├── sub-001/
+
 │ └── eeg/
+
 │ └── sub-001_task-eyesclosed_eeg.set
+
 ├── sub-002/
+
 └── ...
+
 
 If the dataset is not placed in this exact location, the script will not be able to load the EEG data.
 
