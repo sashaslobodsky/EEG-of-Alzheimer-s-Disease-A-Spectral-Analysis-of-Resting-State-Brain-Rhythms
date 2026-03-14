@@ -7,6 +7,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.signal import coherence
+from scipy.stats import ttest_ind
 
 # Dataset root
 DATASET_ROOT = DATASET_ROOT = Path("Data/COGS118C_FINALPRJ")
@@ -143,6 +144,18 @@ if results_df.empty:
 print(results_df.groupby("group")[["delta", "theta", "alpha", "beta"]].mean())
 print('AD coherence matrices:', len(ad_coherence))
 print('HC coherence matrices:', len(hc_coherence))
+
+
+# Simple statistics
+print("\nT-tests:")
+for band in ["delta", "theta", "alpha", "beta"]:
+    ad_vals = results_df[results_df["group"] == "A"][band]
+    hc_vals = results_df[results_df["group"] == "C"][band]
+
+    if len(ad_vals) > 1 and len(hc_vals) > 1:
+        stat, p = ttest_ind(ad_vals, hc_vals, equal_var=False)
+        print(f"{band}: t = {stat:.3f}, p = {p:.4f}")
+
 
 #Creating Vizualization 1 - Bar Plot
 
