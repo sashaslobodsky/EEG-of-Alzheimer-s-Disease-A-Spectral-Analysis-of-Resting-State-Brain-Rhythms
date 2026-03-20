@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.signal import coherence
 from scipy.stats import ttest_ind
+from statsmodels.stats.multitest import multipletests
 
 # Dataset root
 DATASET_ROOT = DATASET_ROOT = Path("Data/COGS118C_FINALPRJ")
@@ -197,15 +198,17 @@ hc_se = hc_group.std(axis=0) / np.sqrt(hc_group.shape[0])
 ad_lower = np.maximum(ad_mean - ad_se, 1e-20)
 hc_lower = np.maximum(hc_mean - hc_se, 1e-20)
 
-plt.figure(figsize=(8, 5))
 
+plt.figure(figsize=(8, 5))
+#AD
 plt.plot(freqs, ad_mean, label="Alzheimer's", linewidth=3, alpha=0.8)
 plt.fill_between(freqs, ad_lower, ad_mean + ad_se, alpha=0.2)
 
+# Healthy
 plt.plot(freqs, hc_mean, label="Healthy", linewidth=2, alpha=0.8)
 plt.fill_between(freqs, hc_lower, hc_mean + hc_se, alpha=0.2)
 
-plt.yscale("log")
+plt.yscale('log')
 plt.xlabel("Frequency (Hz)")
 plt.ylabel("Power")
 plt.title("Log Power Spectrum: AD vs Healthy")
@@ -213,8 +216,23 @@ plt.legend()
 plt.tight_layout()
 plt.show()
 
+#Visualization #3 - Normalized power spectrum
 
-#Visualization #3 - Magnitude-Squared Coherence Matrix Graph
+ratio = ad_mean / hc_mean
+
+plt.figure(figsize=(8,5))
+plt.plot(freqs, ratio, label="AD / Healthy", linewidth=3)
+
+plt.axhline(1, linestyle='--', color='black')
+
+plt.xlabel("Frequency (Hz)")
+plt.ylabel("Relative Power (AD / Healthy)")
+plt.title("Normalized Power Spectrum (AD relative to Healthy)")
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+#Visualization #4 - Magnitude-Squared Coherence Matrix Graph
 #Magnitude-Squared coherence will measure how strongly two EEG channels are related at a frequecny and if its value is near 0 then it will have weak relationship, if value near 1 it has strong relationship 
 ad_coh_mean = np.mean(ad_coherence, axis=0)
 hc_coh_mean = np.mean(hc_coherence, axis=0)
@@ -234,3 +252,49 @@ plt.xlabel("Channel")
 plt.ylabel("Channel")
 plt.tight_layout()
 plt.show()
+
+#Visualization #5 - Statistically significant coherence differences
+ad_coherence = np.array(ad_coherence)
+hc_coherence = np.array(hc_coherence)
+num_channel = ad_coherence.shape[1]
+t_matrix =np.zeros((num_channel, num_channel))#emptying the shape of matrix
+p_matrix = np.ones((num_channel, num_channel))
+
+for i in range(num_channel):
+    for j in range(i+1,num_channel):#loops through channel pairs once so not repetiive
+        ad_vals = ad_coherence[:,i,j]#makes sure it gets all subjecvts for the channel pair in ad and hc
+        hc_vals = hc_coherence[:,i,j]
+
+        t_stat,p_val= ttest_ind(ad_vals,hc_vals,equal_var=False)#running statistical two sample ttest that will compare ad and hc for one channel pair
+        t_matrix[i,j]= t_stat
+        t_matrix[j,i]= t_stat
+        p_matrix[i,j]= p_val
+        p_matrix[j,i]= p_val
+
+#Correcting FDR
+upper_index = np.triu_indices(num_channel, k=1) #takes size of matrix and takes value from above diagonal, triu is the triangle upper
+p_val_up = p_matrix[upper_index]
+reject,p_val_correct, _,_ = multipletests(p_val_up, alpha = 0.05, method='fdr_bh')
+
+sig_matrix = np.zeros((num_channel,num_channel),dtype=bool)#creating new matrix following bool
+sig_matrix[upper_index] =reject #blanks it
+sig_matrix = sig_matrix | sig_matrix.T #transposing
+
+#want only the sig differnces
+sig_diff_coh = np.where(sig_matrix,diff_coh,np.nan)
+
+#Plotting the graph
+sns.heatmap(
+    sig_diff_coh,
+    xticklabels=raw.ch_names,
+    yticklabels=raw.ch_names,
+    cmap='coolwarm',
+    center=0,
+    mask = np.isnan(sig_diff_coh) #drops and hides all spots where the val is nan 
+)
+plt.title('Significant Alpha Band Coherence Differences')
+plt.xlabel('Channel')
+plt.ylabel('Channel')
+plt.tight_layout()
+plt.show()
+
