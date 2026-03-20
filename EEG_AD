@@ -65,7 +65,7 @@ def compute_alpha_coherence_matrix(raw):
 for subject in subject_ids:
     try:
         #Making sure folders are downloaded properly and loaded
-        eeg_folder = DATASET_ROOT / subject / "eeg"
+        eeg_folder = DATASET_ROOT / "derivatives" / subject / "eeg"
         print("Checking folder:", eeg_folder)
 
         if not eeg_folder.exists():
